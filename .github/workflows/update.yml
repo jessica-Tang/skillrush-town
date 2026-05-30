@@ -9,6 +9,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  issues: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -23,6 +24,24 @@ jobs:
           python-version: "3.11"
       - name: Fetch ClawHub snapshot
         run: python scripts/clawhub_daily.py
+      - name: Check snapshot health
+        run: |
+          ITEMS=$(python3 -c "import json; print(len(json.load(open('data/latest.json')).get('items', [])))")
+          LIMITS=$(python3 -c "import json; l=json.load(open('data/latest.json')).get('limitations', []); print(len(l))")
+          echo "items=$ITEMS limitations=$LIMITS"
+          if [ "$ITEMS" -lt 80 ]; then
+            echo "::warning::Snapshot has only $ITEMS items (threshold: 80). Possible API change."
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "⚠️ ClawHub snapshot only has $ITEMS items" \
+              --body "The latest snapshot has $ITEMS items, which is below the 80-item threshold.
+
+          Check \`data/latest.json\` limitations field and the Convex API endpoint.
+          This issue was auto-created by the update workflow." \
+              --label "alert" 2>/dev/null || echo "Could not create issue (missing permissions or label)"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"

@@ -285,8 +285,12 @@ def render_report(snapshot: dict[str, Any], dropped: list[dict[str, Any]]) -> st
     lines.extend([line_for_item(item) for item in new_entries[:20]] or [new_empty])
 
     lines += ["", "## 掉榜", ""]
+    if has_history and dropped:
+        lines.append(f"- 共 {len(dropped)} 个 Skill 掉出 Top100")
     dropped_empty = "- 今日无掉榜。" if has_history else "- 无，或因缺少历史切片无法判断。"
     lines.extend([f"- 原 #{item.get('rank')} {item.get('name')}（{item.get('author')} / `{item.get('slug')}`）" for item in dropped[:20]] or [dropped_empty])
+    if len(dropped) > 20:
+        lines.append(f"- ...及其他 {len(dropped) - 20} 个")
 
     lines += ["", "## Top10 变动", ""]
     lines.extend(line_for_item(item) for item in items[:10])
